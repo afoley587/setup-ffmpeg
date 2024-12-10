@@ -76,21 +76,51 @@ async function getRelease(installer, options) {
  * @returns {Promise<InstallOutput>}
  */
 export async function install(options) {
+  // Retry configuration
+  const maxRetries = 5;
+  const initialDelay = 1000; // 1 second
+
+  // Function to handle retries with exponential backoff
+  const retryWithBackoff = async (fn) => {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        return await fn();
+      } catch (error) {
+        attempt++;
+        if (attempt >= maxRetries) {
+          throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
+        }
+        const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff
+        core.debug(`Retrying... attempt ${attempt}. Retrying in ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay)); // Wait before retrying
+      }
+    }
+  };
+
   const installer = getInstaller(options);
   let release;
   let version = options.version;
-  if (version.toLowerCase() === 'git' || 
-      version.toLowerCase() === 'release') {
-    release = await installer.getLatestRelease();
+
+  if (version.toLowerCase() === 'git' || version.toLowerCase() === 'release') {
+    // Wrap the getLatestRelease call in the retry logic
+    release = await retryWithBackoff(() => installer.getLatestRelease());
     version = release.version;
   }
+
   const toolInstallDir = tc.find(options.toolCacheDir, version, options.arch);
   if (toolInstallDir) {
     core.info(`Using ffmpeg version ${version} from tool cache`);
-    return {version, path: toolInstallDir, cacheHit: true};
+    return { version, path: toolInstallDir, cacheHit: true };
   }
-  if (!release) release = await getRelease(installer, options);
+
+  if (!release) {
+    // Wrap the getRelease call in the retry logic
+    release = await retryWithBackoff(() => getRelease(installer, options));
+  }
+
   core.info(`Installing ffmpeg version ${release.version} from ${release.downloadUrl}`);
+
   return {
     ...(await installer.downloadTool(release)),
     cacheHit: false,
