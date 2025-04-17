@@ -99,6 +99,7 @@ export async function install(options) {
   };
 
   const installer = getInstaller(options);
+  core.info(`Got installer`);
   let release;
   let version = options.version;
 
@@ -106,6 +107,7 @@ export async function install(options) {
     // Wrap the getLatestRelease call in the retry logic
     release = await retryWithBackoff(() => installer.getLatestRelease());
     version = release.version;
+    core.info(`Got version`);
   }
 
   const toolInstallDir = tc.find(options.toolCacheDir, version, options.arch);
@@ -117,6 +119,7 @@ export async function install(options) {
   if (!release) {
     // Wrap the getRelease call in the retry logic
     release = await retryWithBackoff(() => getRelease(installer, options));
+    core.info(`Got release`);
   }
 
   core.info(`Installing ffmpeg version ${release.version} from ${release.downloadUrl}`);
