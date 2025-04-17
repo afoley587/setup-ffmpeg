@@ -29,7 +29,7 @@ async function run() {
     const linkingType = core.getInput(INPUT_LINKING_TYPE) || "static";
 
     assert.ok(["static", "shared"].includes(linkingType), 'Unsupported linking type (use static or shared)');
-
+    core.info("Debug logging!");
     const output = await install({
       version,
       githubToken,
