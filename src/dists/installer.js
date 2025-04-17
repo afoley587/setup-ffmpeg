@@ -92,7 +92,7 @@ export async function install(options) {
           throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
         }
         const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff
-        core.debug(`Retrying... attempt ${attempt}. Retrying in ${delay}ms`);
+        core.info(`Retrying... attempt ${attempt}. Retrying in ${delay}ms`);
         await new Promise(resolve => setTimeout(resolve, delay)); // Wait before retrying
       }
     }
@@ -122,7 +122,7 @@ export async function install(options) {
   core.info(`Installing ffmpeg version ${release.version} from ${release.downloadUrl}`);
 
   return {
-    ...(await installer.downloadTool(release)),
+    ...(await retryWithBackoff(() => installer.downloadTool(release))),
     cacheHit: false,
   };
 }
